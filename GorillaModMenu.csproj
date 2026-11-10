@@ -1,0 +1,30 @@
+name: Build Mod Menu
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download game DLLs
+        run: |
+          mkdir refs
+          curl -L -o refs/UnityEngine.CoreModule.dll https://github.com/vfsfitvnm/ViolinBuilder/raw/main/UnityEngine.CoreModule.dll
+          curl -L -o refs/Assembly-CSharp.dll https://github.com/vfsfitvnm/ViolinBuilder/raw/main/Assembly-CSharp.dll
+
+      - name: Build
+        uses: glassez/csc-action@v1
+        with:
+          sources: GorillaModMenu.cs
+          references: refs/UnityEngine.CoreModule.dll;refs/Assembly-CSharp.dll
+          libraries: ~/.nuget/packages/bepinex.core/5.4.21/lib/net35/BepInEx.dll;~/.nuget/packages/bepinex.core/5.4.21/lib/net35/0Harmony.dll
+          output: output/GorillaTagModMenu.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GorillaTagModMenu
+          path: output/GorillaTagModMenu.dll
