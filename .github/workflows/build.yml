@@ -1,0 +1,38 @@
+name: Build gg2menu
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download game DLLs
+        run: |
+          mkdir refs
+          curl -L -o refs/UnityEngine.CoreModule.dll https://github.com/vfsfitvnm/ViolinBuilder/raw/main/UnityEngine.CoreModule.dll
+          curl -L -o refs/Assembly-CSharp.dll https://github.com/vfsfitvnm/ViolinBuilder/raw/main/Assembly-CSharp.dll
+
+      - name: Build gg2menu.dll
+        shell: pwsh
+        run: |
+          $bepinoxDlls = Get-ChildItem -Path ~/.nuget/packages -Recurse -Filter "BepInEx.dll" | Select-Object -First 1
+          dotnet tool install --global ilspycmd 2>$null
+          New-Item -ItemType Directory -Force -Path refs | Out-Null
+          # install BepInEx package for reference
+          dotnet new classlib -n temp -o temp --force
+          dotnet add temp/package BepInEx.Core --version 5.4.21
+          dotnet build temp -c Release
+          $bep = Get-ChildItem -Path temp -Recurse -Filter "BepInEx.dll" | Select-Object -First 1
+          $csc = Get-ChildItem "C:\Windows\Microsoft.NET\assembly" -Recurse -Filter "csc.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $roslyn = Get-ChildItem "C:\Program Files\dotnet\sdk" -Recurse -Filter "csc.dll" | Select-Object -Last 1
+          New-Item -ItemType Directory -Force -Path output | Out-Null
+          dotnet "$($roslyn.FullName)" -target:library -out:output/gg2menu.dll -r:refs/UnityEngine.CoreModule.dll -r:refs/Assembly-CSharp.dll -r:"$($bep.FullName)" -r:"$((Get-ChildItem -Path temp -Recurse -Filter '0Harmony.dll' | Select-Object -First 1).FullName)" gg2menu.cs
+
+      - name: Upload gg2menu.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: gg2menu
+          path: output/gg2menu.dll
